@@ -468,12 +468,75 @@
 
 <div class="dash">
     <div>
+        <style>
+            /* ===== 卡片容器 ===== */
+            .top-stats .mini {
+                flex: 1;
+                padding: 16px 14px !important;
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center;
+            }
+            /* ===== 文字区域 ===== */
+            .stat-text {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            /* ===== 图标 ===== */
+            .stat-icon {
+                width: 36px;
+                height: 36px;
+                object-fit: contain;
+                margin-left: auto !important;
+            }
+        </style>
         <div class="top-stats">
-            <div class="mini"><div><%:Internet Status%></div><div id="internet-status" class="top-stat-value" style="font-weight:600;"></div></div>
-            <div class="mini"><div><%:Online App%></div><div id="app-count" class="top-stat-value">0</div></div>
-            <div class="mini"><div><%:Online User%></div><div id="mini-online" class="top-stat-value">0</div></div>
-            <div class="mini"><div><%:Connections%></div><div id="mini-conn" class="top-stat-value">0</div></div>
-            <div class="mini"><div><%:Today Traffic%></div><div id="mini-traffic" class="top-stat-value">0MB</div></div>
+            <!-- 1. 联网状态 -->
+            <div class="mini">
+                <div class="stat-text">
+                    <div><%:Internet Status%></div>
+                    <div id="internet-status" class="top-stat-value" style="font-weight:600;"></div>
+                </div>
+                <img src="/luci-static/resources/dashboard_icons/network.png" class="stat-icon" alt="联网状态图标">
+            </div>
+            
+            <!-- 2. 在线APP -->
+            <div class="mini">
+                <div class="stat-text">
+                    <div><%:Online App%></div>
+                    <div id="app-count" class="top-stat-value">0</div>
+                </div>
+                <img src="/luci-static/resources/dashboard_icons/app.png" class="stat-icon" alt="在线APP图标">
+            </div>
+            
+            <!-- 3. 在线用户 -->
+            <div class="mini">
+                <div class="stat-text">
+                    <div><%:Online User%></div>
+                    <div id="mini-online" class="top-stat-value">0</div>
+                </div>
+                <img src="/luci-static/resources/dashboard_icons/user.png" class="stat-icon" alt="在线用户图标">
+            </div>
+            
+            <!-- 4. 连接数 -->
+            <div class="mini">
+                <div class="stat-text">
+                    <div><%:Connections%></div>
+                    <div id="mini-conn" class="top-stat-value">0</div>
+                </div>
+                <img src="/luci-static/resources/dashboard_icons/connection.png" class="stat-icon" alt="连接数图标">
+            </div>
+            
+            <!-- 5. 今日流量 -->
+            <div class="mini">
+                <div class="stat-text">
+                    <div><%:Today Traffic%></div>
+                    <div id="mini-traffic" class="top-stat-value">0MB</div>
+                </div>
+                <img src="/luci-static/resources/dashboard_icons/traffic.png" class="stat-icon" alt="今日流量图标">
+            </div>
         </div>
 
         <div class="main-grid">
