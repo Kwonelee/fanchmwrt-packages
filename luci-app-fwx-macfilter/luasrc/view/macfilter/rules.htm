@@ -635,14 +635,26 @@ $(document).ready(function() {
     var _EnterRuleName = '<%:Enter rule name%>';
     var _EnableRule = '<%:Enable Rule%>';
     var _RuleMode = '<%:Rule Mode%>';
+    var _DisconnectMode = '<%:Disconnect Mode%>';
+    var _TimeRange = '<%:Time Range%>';
+    var _DailyDuration = '<%:Daily Duration%>';
+    var _DailyTraffic = '<%:Daily Traffic%>';
+    var _DurationRules = '<%:Duration Rules%>';
+    var _FlowRules = '<%:Flow Rules%>';
     var _SelectUser = '<%:Select User%>';
     var _AddTimeRule = '<%:Add Time Rule%>';
+    var _AddDurationRule = '<%:Add Duration Rule%>';
+    var _AddFlowRule = '<%:Add Flow Rule%>';
+    var _DurationMinutes = '<%:Duration (minutes)%>';
+    var _FlowMB = '<%:Flow (MB)%>';
     var _Cancel = '<%:Cancel%>';
     var _Save = '<%:Save%>';
     var _Remove = '<%:Remove%>';
     var _PleaseEnterRuleName = '<%:Please enter rule name%>';
     var _PleaseSelectUser = '<%:Please select a user%>';
     var _PleaseAddTimeRule = '<%:Please add at least one time rule%>';
+    var _PleaseEnterDurationMinutes = '<%:Please enter valid duration minutes%>';
+    var _PleaseEnterFlowMB = '<%:Please enter valid flow MB%>';
     var _RuleAddedSuccessfully = '<%:Rule added successfully%>';
     var _RuleUpdatedSuccessfully = '<%:Rule updated successfully%>';
     var _RuleDeletedSuccessfully = '<%:Rule deleted successfully%>';
@@ -669,6 +681,215 @@ $(document).ready(function() {
     var allUsers = [];
     var rules = [];
     var currentEditingRuleId = null; 
+    var WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+    function getTimeModeText(timeMode) {
+        var mode = parseInt(timeMode, 10);
+        if (mode === 2) {
+            return _DailyDuration;
+        }
+        if (mode === 3) {
+            return _DailyTraffic;
+        }
+        return _TimeRange;
+    }
+
+    function formatWeekdays(weekdays) {
+        var days = [_Sun, _Mon, _Tue, _Wed, _Thu, _Fri, _Sat];
+        if (!Array.isArray(weekdays) || weekdays.length === 0) {
+            return '-';
+        }
+        return weekdays.map(function(w) {
+            return days[w] || '';
+        }).join(',');
+    }
+
+    function clampInt(value, min, max) {
+        var num = parseInt(value, 10);
+        if (isNaN(num)) {
+            num = 0;
+        }
+        if (num < min) {
+            num = min;
+        }
+        if (num > max) {
+            num = max;
+        }
+        return num;
+    }
+
+    function parseTimeListToRules(timeList) {
+        var rules = [];
+        (timeList || []).forEach(function(item) {
+            if (!item) {
+                return;
+            }
+            var parts = String(item).split(',');
+            if (parts.length < 3) {
+                return;
+            }
+            var startTime = $.trim(parts[parts.length - 2] || '');
+            var endTime = $.trim(parts[parts.length - 1] || '');
+            if (!startTime || !endTime || startTime.indexOf(':') < 0 || endTime.indexOf(':') < 0) {
+                return;
+            }
+            var weekdays = [];
+            for (var i = 0; i < parts.length - 2; i++) {
+                var wd = parseInt($.trim(parts[i]), 10);
+                if (!isNaN(wd) && wd >= 0 && wd <= 6 && weekdays.indexOf(wd) === -1) {
+                    weekdays.push(wd);
+                }
+            }
+            if (weekdays.length === 0) {
+                return;
+            }
+            rules.push({
+                weekdays: weekdays,
+                start_time: startTime,
+                end_time: endTime
+            });
+        });
+        return rules;
+    }
+
+    function buildTimeListFromRules(timeRules) {
+        var list = [];
+        (timeRules || []).forEach(function(item) {
+            var weekdays = Array.isArray(item.weekdays) ? item.weekdays : [];
+            var weekdayText = weekdays.map(function(wd) {
+                return parseInt(wd, 10);
+            }).filter(function(wd) {
+                return !isNaN(wd) && wd >= 0 && wd <= 6;
+            }).join(',');
+
+            if (!weekdayText) {
+                return;
+            }
+            var startTime = item.start_time || '';
+            var endTime = item.end_time || '';
+            if (!startTime || !endTime) {
+                return;
+            }
+            list.push(weekdayText + ',' + startTime + ',' + endTime);
+        });
+        return list;
+    }
+
+    function parseLimitString(limitStr, maxValue) {
+        var map = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0};
+        if (!limitStr) {
+            return map;
+        }
+        String(limitStr).split(',').forEach(function(pair) {
+            var match = String(pair).match(/^\s*(\d+)\s*:\s*(\d+)\s*$/);
+            if (!match) {
+                return;
+            }
+            var day = parseInt(match[1], 10);
+            var value = clampInt(match[2], 0, maxValue);
+            if (!isNaN(day) && day >= 0 && day <= 6) {
+                map[day] = value;
+            }
+        });
+        return map;
+    }
+
+    function buildLimitString(limitMap, maxValue) {
+        return WEEK_ORDER.map(function(day) {
+            var value = clampInt((limitMap || {})[day], 0, maxValue);
+            return day + ':' + value;
+        }).join(',');
+    }
+
+    function limitMapToRules(limitMap, valueKey, maxValue) {
+        return WEEK_ORDER.map(function(day) {
+            var value = clampInt((limitMap || {})[day], 0, maxValue);
+            var item = {weekdays: [day]};
+            item[valueKey] = value;
+            return item;
+        });
+    }
+
+    function rulesToLimitMap(timeRules, valueKey, maxValue) {
+        var map = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0};
+        (timeRules || []).forEach(function(rule) {
+            var value = clampInt(rule ? rule[valueKey] : 0, 0, maxValue);
+            var weekdays = Array.isArray(rule && rule.weekdays) ? rule.weekdays : [];
+            weekdays.forEach(function(day) {
+                var d = parseInt(day, 10);
+                if (!isNaN(d) && d >= 0 && d <= 6) {
+                    map[d] = value;
+                }
+            });
+        });
+        return map;
+    }
+
+    function getWeekdayLabel(day) {
+        if (day === 1) return _Mon;
+        if (day === 2) return _Tue;
+        if (day === 3) return _Wed;
+        if (day === 4) return _Thu;
+        if (day === 5) return _Fri;
+        if (day === 6) return _Sat;
+        return _Sun;
+    }
+
+    function formatLimitSummary(limitStr, maxValue, unit) {
+        var map = parseLimitString(limitStr, maxValue);
+        return WEEK_ORDER.map(function(day) {
+            return getWeekdayLabel(day) + ':' + (map[day] || 0) + unit;
+        }).join(' ');
+    }
+
+    function normalizeRule(rule) {
+        if (!rule) {
+            return { time_mode: 1, time_rules: [], time_list: [], time_limit: '', flow_limit: '' };
+        }
+
+        var timeMode = parseInt(rule.time_mode, 10);
+        if (isNaN(timeMode) || (timeMode !== 1 && timeMode !== 2 && timeMode !== 3)) {
+            timeMode = 1;
+        }
+        rule.time_mode = timeMode;
+        if (!Array.isArray(rule.time_rules)) {
+            rule.time_rules = [];
+        }
+        if (!Array.isArray(rule.time_list)) {
+            rule.time_list = [];
+        }
+        rule.time_limit = rule.time_limit || '';
+        rule.flow_limit = rule.flow_limit || '';
+
+        if (timeMode === 1) {
+            if (rule.time_list.length === 0 && rule.time_rules.length > 0) {
+                rule.time_list = buildTimeListFromRules(rule.time_rules);
+            }
+            rule.time_rules = parseTimeListToRules(rule.time_list);
+            rule.time_limit = '';
+            rule.flow_limit = '';
+        } else if (timeMode === 2) {
+            var durationMap = parseLimitString(rule.time_limit, 1440);
+            if ((!rule.time_limit || rule.time_limit === '') && rule.time_rules.length > 0) {
+                durationMap = rulesToLimitMap(rule.time_rules, 'duration_minutes', 1440);
+            }
+            rule.time_limit = buildLimitString(durationMap, 1440);
+            rule.time_rules = limitMapToRules(durationMap, 'duration_minutes', 1440);
+            rule.time_list = [];
+            rule.flow_limit = '';
+        } else {
+            var flowMap = parseLimitString(rule.flow_limit, 1048576);
+            if ((!rule.flow_limit || rule.flow_limit === '') && rule.time_rules.length > 0) {
+                flowMap = rulesToLimitMap(rule.time_rules, 'flow_mb', 1048576);
+            }
+            rule.flow_limit = buildLimitString(flowMap, 1048576);
+            rule.time_rules = limitMapToRules(flowMap, 'flow_mb', 1048576);
+            rule.time_list = [];
+            rule.time_limit = '';
+        }
+
+        return rule;
+    }
     
     init();
     
@@ -693,12 +914,7 @@ $(document).ready(function() {
             if (data && data.code === 0 && Array.isArray(data.data)) {
                 rules = data.data;
                 rules = rules.map(function(rule) {
-                    if (rule.time_rules && !Array.isArray(rule.time_rules)) {
-                        rule.time_rules = [];
-                    } else if (!rule.time_rules) {
-                        rule.time_rules = [];
-                    }
-                    return rule;
+                    return normalizeRule(rule);
                 });
             } else {
                 rules = [];
@@ -732,26 +948,28 @@ $(document).ready(function() {
         $thead.append($headerRow);
         
         rules.forEach(function(rule) {
-            if (!rule.time_rules || !Array.isArray(rule.time_rules)) {
-                rule.time_rules = [];
-            }
+            rule = normalizeRule(rule);
             
             var $row = $('<tr>');
             
             $row.append($('<td>').text(rule.name));
             
             var modeText = rule.mode === 1 ? _AllUsers : _SingleUser + ': ' + (rule.user_name || rule.user_mac);
+            modeText = modeText + ' / ' + getTimeModeText(rule.time_mode);
             $row.append($('<td>').text(modeText));
             
             var $timeCell = $('<td>');
             var $timeDisplay = $('<span>').addClass('time-rules-display');
             
-            if (rule.time_rules && rule.time_rules.length > 0) {
+            if (parseInt(rule.time_mode, 10) === 2) {
+                $timeDisplay.text(formatLimitSummary(rule.time_limit, 1440, 'min'));
+                $timeCell.append($timeDisplay);
+            } else if (parseInt(rule.time_mode, 10) === 3) {
+                $timeDisplay.text(formatLimitSummary(rule.flow_limit, 1048576, 'MB'));
+                $timeCell.append($timeDisplay);
+            } else if (rule.time_rules && rule.time_rules.length > 0) {
                 var firstRule = rule.time_rules[0];
-                var weekdays = firstRule.weekdays.map(function(w) {
-                    var days = [_Sun, _Mon, _Tue, _Wed, _Thu, _Fri, _Sat];
-                    return days[w];
-                }).join(',');
+                var weekdays = formatWeekdays(firstRule.weekdays);
                 var timeText = weekdays + ' ' + firstRule.start_time + '-' + firstRule.end_time;
                 $timeDisplay.text(timeText);
                 $timeDisplay.css('cursor', 'pointer');
@@ -1331,6 +1549,7 @@ $(document).ready(function() {
             console.error('Rule not found:', ruleId);
             return;
         }
+        rule = normalizeRule(rule);
         
         ruleId = parseInt(ruleId);
         console.log('editRule - parsed ruleId:', ruleId);
@@ -1342,19 +1561,30 @@ $(document).ready(function() {
         }
         $('#rule-enabled').prop('checked', enabledValue === 1);
         $('input[name="rule-mode"][value="' + rule.mode + '"]').prop('checked', true);
+        $('input[name="time-mode"][value="' + (rule.time_mode || 1) + '"]').prop('checked', true);
         onModeChange();
+        onTimeModeChange();
         if (rule.mode === 2) {
             $('#rule-user').val(rule.user_mac);
         }
         
         $('#time-rules-container').empty();
-        var timeRules = rule.time_rules;
-        if (!timeRules || !Array.isArray(timeRules)) {
-            timeRules = [];
+        if (rule.time_mode === 1) {
+            var timeRules = rule.time_rules;
+            if (!timeRules || !Array.isArray(timeRules)) {
+                timeRules = [];
+            }
+            if (timeRules.length === 0) {
+                addTimeRule();
+            }
+            timeRules.forEach(function(tr) {
+                addTimeRule(tr);
+            });
+        } else if (rule.time_mode === 2) {
+            renderWeekLimitConfig(rule.time_limit, 2);
+        } else {
+            renderWeekLimitConfig(rule.flow_limit, 3);
         }
-        timeRules.forEach(function(tr) {
-            addTimeRule(tr);
-        });
         
         $('#add-rule-modal').addClass('show');
         $('#rule-form-title').text(_EditRule);
@@ -1422,6 +1652,78 @@ $(document).ready(function() {
             $('#user-selection-group').hide();
         }
     }
+
+    function renderWeekLimitConfig(limitStr, timeMode) {
+        var maxValue = timeMode === 2 ? 1440 : 1048576;
+        var unitText = timeMode === 2 ? 'min' : 'MB';
+        var limitMap = parseLimitString(limitStr, maxValue);
+        var $container = $('#time-rules-container');
+        $container.empty();
+        WEEK_ORDER.forEach(function(day) {
+            var $row = $('<div>').addClass('time-rule-item week-limit-item');
+            var $label = $('<div>').addClass('time-rule-weekdays').append(
+                $('<label>').text(getWeekdayLabel(day))
+            );
+            var $valueWrap = $('<div>').addClass('time-rule-time');
+            var $input = $('<input>').attr({
+                type: 'number',
+                class: 'week-limit-input',
+                min: 0,
+                max: maxValue,
+                value: clampInt(limitMap[day], 0, maxValue),
+                'data-day': day
+            }).css('width', '140px');
+            $valueWrap.append($input).append($('<span>').css('margin-left', '8px').text(unitText));
+            $row.append($label).append($valueWrap);
+            $container.append($row);
+        });
+    }
+
+    function collectWeekLimitString(timeMode) {
+        var maxValue = timeMode === 2 ? 1440 : 1048576;
+        var limitMap = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0};
+        var invalid = false;
+        $('#time-rules-container .week-limit-input').each(function() {
+            var day = parseInt($(this).attr('data-day'), 10);
+            var valStr = $.trim($(this).val() || '');
+            if (valStr === '') {
+                valStr = '0';
+            }
+            if (!/^\d+$/.test(valStr)) {
+                invalid = true;
+                return false;
+            }
+            var value = clampInt(valStr, 0, maxValue);
+            if (isNaN(day) || day < 0 || day > 6) {
+                invalid = true;
+                return false;
+            }
+            limitMap[day] = value;
+        });
+        if (invalid) {
+            return null;
+        }
+        return buildLimitString(limitMap, maxValue);
+    }
+
+    function onTimeModeChange() {
+        var timeMode = $('input[name="time-mode"]:checked').val() || '1';
+        var titleText = _TimeRules;
+        if (timeMode === '2') {
+            titleText = _DailyDuration;
+        } else if (timeMode === '3') {
+            titleText = _DailyTraffic;
+        }
+        $('#time-rules-title').text(titleText + ' *');
+        if (timeMode === '1') {
+            $('#btn-add-time-rule').show().text(_AddTimeRule);
+            $('#time-rules-container').empty();
+            addTimeRule();
+        } else {
+            $('#btn-add-time-rule').hide();
+            renderWeekLimitConfig('', parseInt(timeMode, 10));
+        }
+    }
     
     function loadUserOptions() {
         var $select = $('#rule-user');
@@ -1455,6 +1757,10 @@ $(document).ready(function() {
     }
     
     function addTimeRule(timeRule) {
+        var timeMode = parseInt($('input[name="time-mode"]:checked').val() || '1', 10);
+        if (timeMode !== 1) {
+            return;
+        }
         var currentTimeRulesCount = $('#time-rules-container .time-rule-item').length;
         if (currentTimeRulesCount >= 16) {
             if (typeof showCommonModal === 'function') {
@@ -1464,7 +1770,7 @@ $(document).ready(function() {
             }
             return;
         }
-        
+
         timeRule = timeRule || {weekdays: [0,1,2,3,4,5,6], start_time: '00:00', end_time: '23:59'};
         
         var $timeRule = $('<div>').addClass('time-rule-item');
@@ -1496,7 +1802,6 @@ $(document).ready(function() {
             class: 'time-end',
             value: timeRule.end_time || '23:59'
         });
-        
         $timeContainer.append($startTime);
         $timeContainer.append($('<span>').text(' - '));
         $timeContainer.append($endTime);
@@ -1531,6 +1836,7 @@ $(document).ready(function() {
         }
         
         var mode = parseInt($('input[name="rule-mode"]:checked').val());
+        var timeMode = parseInt($('input[name="time-mode"]:checked').val() || '1', 10);
         var userMac = '';
         var userName = '';
         
@@ -1552,29 +1858,55 @@ $(document).ready(function() {
         }
         
         var timeRules = [];
-        $('#time-rules-container .time-rule-item').each(function() {
-            var $item = $(this);
-            var weekdays = [];
-            $item.find('input[type="checkbox"][data-weekday]:checked').each(function() {
-                weekdays.push(parseInt($(this).val()));
-            });
-            
-            if (weekdays.length > 0) {
-                timeRules.push({
-                    weekdays: weekdays,
-                    start_time: $item.find('.time-start').val(),
-                    end_time: $item.find('.time-end').val()
+        var timeList = [];
+        var timeLimit = '';
+        var flowLimit = '';
+        if (timeMode === 1) {
+            $('#time-rules-container .time-rule-item').each(function() {
+                var $item = $(this);
+                var weekdays = [];
+                $item.find('input[type="checkbox"][data-weekday]:checked').each(function() {
+                    weekdays.push(parseInt($(this).val(), 10));
                 });
+                if (weekdays.length > 0) {
+                    timeRules.push({
+                        weekdays: weekdays,
+                        start_time: $item.find('.time-start').val(),
+                        end_time: $item.find('.time-end').val()
+                    });
+                }
+            });
+            if (timeRules.length === 0) {
+                if (typeof showCommonModal === 'function') {
+                    showCommonModal(_PleaseAddTimeRule);
+                } else {
+                    alert(_PleaseAddTimeRule);
+                }
+                return false;
             }
-        });
-        
-        if (timeRules.length === 0) {
-            if (typeof showCommonModal === 'function') {
-                showCommonModal(_PleaseAddTimeRule);
-            } else {
-                alert(_PleaseAddTimeRule);
+            timeList = buildTimeListFromRules(timeRules);
+        } else if (timeMode === 2) {
+            timeLimit = collectWeekLimitString(2);
+            if (!timeLimit) {
+                if (typeof showCommonModal === 'function') {
+                    showCommonModal(_PleaseEnterDurationMinutes);
+                } else {
+                    alert(_PleaseEnterDurationMinutes);
+                }
+                return false;
             }
-            return false;
+            timeRules = limitMapToRules(parseLimitString(timeLimit, 1440), 'duration_minutes', 1440);
+        } else {
+            flowLimit = collectWeekLimitString(3);
+            if (!flowLimit) {
+                if (typeof showCommonModal === 'function') {
+                    showCommonModal(_PleaseEnterFlowMB);
+                } else {
+                    alert(_PleaseEnterFlowMB);
+                }
+                return false;
+            }
+            timeRules = limitMapToRules(parseLimitString(flowLimit, 1048576), 'flow_mb', 1048576);
         }
         
         var enabled = $('#rule-enabled').is(':checked') ? 1 : 0;
@@ -1634,10 +1966,14 @@ $(document).ready(function() {
         var ruleData = {
             name: ruleName,
             mode: mode,
+            time_mode: timeMode,
             user_mac: userMac,
             user_name: userName,
             mac_list: macList,
             time_rules: timeRules,
+            time_list: timeList,
+            time_limit: timeLimit,
+            flow_limit: flowLimit,
             enabled: enabled
         };
         
@@ -1711,6 +2047,9 @@ $(document).ready(function() {
         
         $('input[name="rule-mode"][value="1"]').prop('checked', true);
         $('input[name="rule-mode"][value="2"]').prop('checked', false);
+        $('input[name="time-mode"][value="1"]').prop('checked', true);
+        $('input[name="time-mode"][value="2"]').prop('checked', false);
+        $('input[name="time-mode"][value="3"]').prop('checked', false);
         
         var $userSelect = $('#rule-user');
         if ($userSelect.length > 0) {
@@ -1723,11 +2062,11 @@ $(document).ready(function() {
         $('#user-selection-group').hide();
         
         $('#rule-form-title').text(_AddRule);
-        
-        addTimeRule();
+        onTimeModeChange();
     }
     
     $(document).on('change', 'input[name="rule-mode"]', onModeChange);
+    $(document).on('change', 'input[name="time-mode"]', onTimeModeChange);
     $('#btn-add-time-rule').on('click', function() {
         addTimeRule();
     });
@@ -1810,7 +2149,7 @@ $(document).ready(function() {
         }
     });
     
-    addTimeRule();
+    onTimeModeChange();
 });
 //]]></script>
 
@@ -1854,6 +2193,24 @@ $(document).ready(function() {
                                 </div>
                             </div>
                         </div>
+
+                        <div class="form-group">
+                            <label><%:Disconnect Mode%> *</label>
+                            <div class="radio-group">
+                                <div class="radio-option">
+                                    <input type="radio" id="time-mode-range" name="time-mode" value="1" checked>
+                                    <label for="time-mode-range"><%:Time Range%></label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="time-mode-duration" name="time-mode" value="2">
+                                    <label for="time-mode-duration"><%:Daily Duration%></label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="time-mode-flow" name="time-mode" value="3">
+                                    <label for="time-mode-flow"><%:Daily Traffic%></label>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div class="form-group" id="user-selection-group" style="display: none;">
                             <label for="rule-user"><%:Select User%> *</label>
@@ -1863,7 +2220,7 @@ $(document).ready(function() {
                         </div>
                         
                         <div class="form-group">
-                            <label><%:Time Rules%> *</label>
+                            <label id="time-rules-title"><%:Time Rules%> *</label>
                             <button type="button" id="btn-add-time-rule" class="btn-add-time"><%:Add Time Rule%></button>
                             <div id="time-rules-container" class="time-rules-container">
                             </div>

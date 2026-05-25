@@ -212,3 +212,39 @@ msgstr "最大只能添加16条规则"
 msgid "Are you sure you want to delete this rule?"
 msgstr "确定要删除这条规则吗？"
 
+
+msgid "Disconnect Mode"
+msgstr "断网模式"
+
+msgid "Time Range"
+msgstr "时间段"
+
+msgid "Daily Duration"
+msgstr "每日时长"
+
+msgid "Duration Rules"
+msgstr "时长规则"
+
+msgid "Add Duration Rule"
+msgstr "添加时长规则"
+
+msgid "Duration (minutes)"
+msgstr "时长（分钟）"
+
+msgid "Please enter valid duration minutes"
+msgstr "请输入有效的时长分钟数"
+
+msgid "Daily Traffic"
+msgstr "每日流量"
+
+msgid "Flow Rules"
+msgstr "流量规则"
+
+msgid "Add Flow Rule"
+msgstr "添加流量规则"
+
+msgid "Flow (MB)"
+msgstr "流量（MB）"
+
+msgid "Please enter valid flow MB"
+msgstr "请输入有效的流量MB值"

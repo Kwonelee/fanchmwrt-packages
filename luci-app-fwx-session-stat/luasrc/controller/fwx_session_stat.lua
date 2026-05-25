@@ -1,8 +1,14 @@
 module("luci.controller.fwx_session_stat", package.seeall)
 
 function index()
+    local global_session_node
+
     entry({"admin", "fwx_monitor"}, firstchild(), _("System Monitor"), 12).dependent = true
-    entry({"admin", "fwx_monitor", "session_stat"}, template("fwx_session_stat/session_stat"), _("Session Statistics"), 51).dependent = true
+    entry({"admin", "fwx_monitor", "session_stat"}, alias("admin", "fwx_monitor", "session_stat", "global_session"), _("Session Statistics"), 51).dependent = true
+    global_session_node = entry({"admin", "fwx_monitor", "session_stat", "global_session"}, template("fwx_session_stat/session_stat"), _("Global Session Count"), 10)
+    global_session_node.leaf = true
+    global_session_node.dependent = true
+    entry({"admin", "fwx_monitor", "session_stat", "session_stat"}, alias("admin", "fwx_monitor", "session_stat", "global_session"), nil, 11).leaf = true
     entry({"admin", "session_stat_api", "get_history_session"}, call("get_history_session")).leaf = true
 end
 
@@ -33,4 +39,3 @@ function get_history_session()
         })
     end
 end
-

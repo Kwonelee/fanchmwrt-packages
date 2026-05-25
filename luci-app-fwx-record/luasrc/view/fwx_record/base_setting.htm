@@ -80,6 +80,14 @@
 		</div>
 	</div>
 
+	<div class="form-row">
+		<label class="form-label" for="rec-base-path"><%:Base Data Path%></label>
+		<div style="flex:1;">
+			<input type="text" id="rec-base-path" name="rec-base-path" />
+			<div class="form-desc-inline"><%:Basic data will be stored in this directory.%></div>
+		</div>
+	</div>
+
 	<div class="form-row" style="justify-content:flex-end; gap:8px;">
 		<button class="btn btn-secondary" type="button" id="record-refresh"><%:Refresh%></button>
 		<button class="btn" type="button" onclick="submitHandle()"><%:Save%></button>
@@ -151,6 +159,7 @@ function loadConfig() {
 			$('#rec-valid').val(resp.data.app_valid_time || 0);
 			$('#rec-history-size').val(resp.data.history_data_size || '');
 			$('#rec-history-path').val(resp.data.history_data_path || '');
+			$('#rec-base-path').val(resp.data.base_data_path || resp.data.terminal_data_path || '');
 			
 			if (resp.data.status && resp.data.status.data_size !== undefined) {
 				var dataSize = resp.data.status.data_size || 0;
@@ -186,6 +195,7 @@ function submitRecordBase() {
 	var valid = parseInt($('#rec-valid').val(), 10) || 0;
 	var history_size = $('#rec-history-size').val().trim();
 	var history_path = $('#rec-history-path').val().trim();
+	var base_path = $('#rec-base-path').val().trim();
 
 	if (history_size) {
 		var size_num = parseInt(history_size, 10);
@@ -205,12 +215,23 @@ function submitRecordBase() {
 		return;
 	}
 
+	if (!base_path || base_path === '/') {
+		showModalTip('<%:Base data path cannot be empty or /%>', false);
+		return;
+	}
+
+	if (base_path.length > 64) {
+		showModalTip('<%:Base data path maximum length is 64 characters%>', false);
+		return;
+	}
+
 	$.post('<%=url("admin/internet_record/set_record_base")%>', {
 		enable: enable,
 		record_time: keep,
 		app_valid_time: valid,
 		history_data_size: history_size,
-		history_data_path: history_path
+		history_data_path: history_path,
+		base_data_path: base_path
 	}, function(resp) {
 		if (resp && (resp.code === 0 || resp.code === 2000)) {
 			showModalTip('<%:Saved successfully%>', true);

@@ -7,6 +7,9 @@ msgstr "系统监控"
 msgid "Session Statistics"
 msgstr "会话统计"
 
+msgid "Global Session Count"
+msgstr "全局会话数"
+
 msgid "Last 5 Minutes"
 msgstr "最近5分钟"
 
@@ -27,4 +30,3 @@ msgstr "峰值会话数"
 
 msgid "Sessions"
 msgstr "会话数"
-

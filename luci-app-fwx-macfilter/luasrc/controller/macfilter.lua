@@ -291,9 +291,27 @@ function add_mac_filter_rule()
 	llog("add_mac_filter_rule: " .. json.stringify(rule_data))
 	
 	
-	if not rule_data.name or not rule_data.mode or not rule_data.time_rules then
+	if not rule_data.name or not rule_data.mode then
 		luci.http.write_json({code = 1, message = "Missing required fields"})
 		return
+	end
+
+	local time_mode = tonumber(rule_data.time_mode) or 1
+	if time_mode == 1 then
+		if (not rule_data.time_list or #rule_data.time_list == 0) and (not rule_data.time_rules or #rule_data.time_rules == 0) then
+			luci.http.write_json({code = 1, message = "Missing required time_list"})
+			return
+		end
+	elseif time_mode == 2 then
+		if (not rule_data.time_limit or rule_data.time_limit == "") and (not rule_data.time_rules or #rule_data.time_rules == 0) then
+			luci.http.write_json({code = 1, message = "Missing required time_limit"})
+			return
+		end
+	elseif time_mode == 3 then
+		if (not rule_data.flow_limit or rule_data.flow_limit == "") and (not rule_data.time_rules or #rule_data.time_rules == 0) then
+			luci.http.write_json({code = 1, message = "Missing required flow_limit"})
+			return
+		end
 	end
 	
 	

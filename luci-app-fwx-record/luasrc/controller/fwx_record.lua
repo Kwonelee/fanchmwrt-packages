@@ -41,6 +41,7 @@ function set_record_base()
 	local app_valid_time = tonumber(http.formvalue("app_valid_time") or 0) or 0
 	local history_data_size = http.formvalue("history_data_size") or ""
 	local history_data_path = http.formvalue("history_data_path") or ""
+	local base_data_path = http.formvalue("base_data_path") or http.formvalue("terminal_data_path") or ""
 	
 	if record_time < 0 then record_time = 0 end
 	if app_valid_time < 0 then app_valid_time = 0 end
@@ -60,9 +61,21 @@ function set_record_base()
 		return
 	end
 
+	if not base_data_path or base_data_path == "" or base_data_path == "/" then
+		http.prepare_content("application/json")
+		http.write(json.stringify({code = 1, msg = "Base data path cannot be empty or /"}))
+		return
+	end
+
 	if #history_data_path > 64 then
 		http.prepare_content("application/json")
 		http.write(json.stringify({code = 1, msg = "History data path maximum length is 64 characters"}))
+		return
+	end
+
+	if #base_data_path > 64 then
+		http.prepare_content("application/json")
+		http.write(json.stringify({code = 1, msg = "Base data path maximum length is 64 characters"}))
 		return
 	end
 
@@ -73,7 +86,8 @@ function set_record_base()
 			record_time = record_time,
 			app_valid_time = app_valid_time,
 			history_data_size = history_data_size,
-			history_data_path = history_data_path
+			history_data_path = history_data_path,
+			base_data_path = base_data_path
 		}
 	}
 	local resp = utl.ubus("fwx", "common", req_obj) or {code = 1}
@@ -100,4 +114,3 @@ function record_action()
 	http.prepare_content("application/json")
 	http.write(json.stringify(resp))
 end
-

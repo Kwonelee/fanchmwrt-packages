@@ -5,12 +5,32 @@
 <script src="<%=resource%>/common.js"></script>
 
 <style>
+    .session-outer {
+        max-width: none !important;
+        width: calc(100% - 16px);
+        margin: 0 auto 16px auto;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: transparent;
+        box-sizing: border-box;
+    }
+    [data-darkmode="true"] .session-outer {
+        border-color: rgba(255, 255, 255, 0.16);
+    }
+    @media (max-width: 900px) {
+        .session-outer {
+            width: calc(100% - 12px);
+            padding: 12px;
+            margin: 0 auto 12px auto;
+        }
+    }
     .session-wrap {
-        padding: 8px;
+        padding: 0;
     }
     .session-card {
         border-radius: 8px;
-        padding: 14px;
+        padding: 0;
     }
     .session-toolbar {
         display: flex;
@@ -57,36 +77,38 @@
         font-weight: 600;
     }
     #session-chart {
-        width: 100%;
+        max-width: none !important;`n        width: calc(100% - 16px);
         height: 380px;
     }
 </style>
 
-<div class="session-wrap">
-    <div class="session-card">
-        <div class="session-toolbar">
-            <h3><%:Session Statistics%></h3>
-            <div class="session-tabs">
-                <button class="session-tab active" id="session-tab-5min" data-range="5min" type="button"><%:Last 5 Minutes%></button>
-                <button class="session-tab" id="session-tab-hour" data-range="hour" type="button"><%:Last Hour%></button>
-                <button class="session-tab" id="session-tab-day" data-range="day" type="button"><%:Last 24 Hours%></button>
+<div class="fwx-form-card session-outer">
+    <div class="session-wrap">
+        <div class="session-card">
+            <div class="session-toolbar">
+                <h3><%:Session Statistics%></h3>
+                <div class="session-tabs">
+                    <button class="session-tab active" id="session-tab-5min" data-range="5min" type="button"><%:Last 5 Minutes%></button>
+                    <button class="session-tab" id="session-tab-hour" data-range="hour" type="button"><%:Last Hour%></button>
+                    <button class="session-tab" id="session-tab-day" data-range="day" type="button"><%:Last 24 Hours%></button>
+                </div>
             </div>
+            <div class="session-kpi">
+                <div class="session-kpi-item">
+                    <div class="session-kpi-label"><%:Current Sessions%></div>
+                    <div class="session-kpi-value" id="session-current">0</div>
+                </div>
+                <div class="session-kpi-item">
+                    <div class="session-kpi-label"><%:Average Sessions%></div>
+                    <div class="session-kpi-value" id="session-avg">0</div>
+                </div>
+                <div class="session-kpi-item">
+                    <div class="session-kpi-label"><%:Peak Sessions%></div>
+                    <div class="session-kpi-value" id="session-peak">0</div>
+                </div>
+            </div>
+            <div id="session-chart"></div>
         </div>
-        <div class="session-kpi">
-            <div class="session-kpi-item">
-                <div class="session-kpi-label"><%:Current Sessions%></div>
-                <div class="session-kpi-value" id="session-current">0</div>
-            </div>
-            <div class="session-kpi-item">
-                <div class="session-kpi-label"><%:Average Sessions%></div>
-                <div class="session-kpi-value" id="session-avg">0</div>
-            </div>
-            <div class="session-kpi-item">
-                <div class="session-kpi-label"><%:Peak Sessions%></div>
-                <div class="session-kpi-value" id="session-peak">0</div>
-            </div>
-        </div>
-        <div id="session-chart"></div>
     </div>
 </div>
 
@@ -214,9 +236,9 @@
 
     function getWindowPointCount(resp) {
         var minutes = parseInt((resp && resp.minutes) || 0, 10);
-        if (currentRange === "5min" || minutes === 5) return 60;      // 5s * 60
-        if (minutes >= 24 * 60 || currentRange === "day") return 1440; // 1min * 1440
-        return 60; // hour default
+        if (currentRange === "5min" || minutes === 5) return 60;
+        if (minutes >= 24 * 60 || currentRange === "day") return 1440;
+        return 60;
     }
 
     function rightAlignSeries(values, windowPoints) {
@@ -336,3 +358,4 @@
 //]]>
 </script>
 <%+footer%>
+
